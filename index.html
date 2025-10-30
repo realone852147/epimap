@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epimap - Plans Interactifs EPITA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            border-bottom: 2px solid #e74c3c;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #e74c3c;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .subtitle a {
+            color: #e74c3c;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .subtitle a:hover {
+            color: #c0392b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .campus-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .campus-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            color: #fff;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .campus-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .campus-btn.active {
+            background: #e74c3c;
+            border-color: #e74c3c;
+            box-shadow: 0 4px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .building-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .building-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .building-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .building-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .building-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .building-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .floor-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .floor-badge {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .legend {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .legend h2 {
+            color: #e74c3c;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .legend-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(231, 76, 60, 0.2);
+            border-radius: 8px;
+            font-size: 1.2rem;
+        }
+
+        .legend-text {
+            flex: 1;
+        }
+
+        .legend-label {
+            font-weight: 600;
+            color: #fff;
+            display: block;
+            margin-bottom: 0.2rem;
+        }
+
+        .legend-desc {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border: 2px solid #e74c3c;
+            border-radius: 20px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalIn 0.3s ease-out;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.8rem;
+            color: #e74c3c;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: #e74c3c;
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .floor-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .floor-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .floor-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .floor-btn.active {
+            background: #e74c3c;
+            border-color: #e74c3c;
+        }
+
+        .map-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        .map-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .info-box a {
+            color: #e74c3c;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .info-box a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .building-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .campus-selector {
+                flex-direction: column;
+            }
+
+            .campus-btn {
+                min-width: 100%;
+            }
+
+            .modal-content {
+                margin: 1rem;
+            }
+
+            .modal-header {
+                padding: 1.5rem;
+            }
+
+            .modal-body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🗺️ Epimap</h1>
+        <p class="subtitle">Plans interactifs des campus EPITA • Contact: <a href="mailto:map@epita.eu">map@epita.eu</a></p>
+    </header>
+
+    <div class="container">
+        <div class="campus-selector">
+            <button class="campus-btn active" data-campus="kb">Kremlin-Bicêtre</button>
+            <button class="campus-btn" data-campus="vj">Villejuif</button>
+        </div>
+
+        <div id="kb-buildings" class="building-grid">
+            <div class="building-card" data-building="voltaire">
+                <div class="building-name">🏢 Voltaire</div>
+                <div class="floor-list">
+                    <span class="floor-badge">-1</span>
+                    <span class="floor-badge">RDC</span>
+                    <span class="floor-badge">1</span>
+                    <span class="floor-badge">2</span>
+                    <span class="floor-badge">3</span>
+                    <span class="floor-badge">4</span>
+                    <span class="floor-badge">5</span>
+                    <span class="floor-badge">6</span>
+                </div>
+            </div>
+
+            <div class="building-card" data-building="pasteur">
+                <div class="building-name">🏢 Pasteur</div>
+                <div class="floor-list">
+                    <span class="floor-badge">-1</span>
+                    <span class="floor-badge">RDC</span>
+                    <span class="floor-badge">1</span>
+                </div>
+            </div>
+
+            <div class="building-card" data-building="paritalie">
+                <div class="building-name">🏢 Paritalie (Bâtiment X)</div>
+                <div class="floor-list">
+                    <span class="floor-badge">2</span>
+                    <span class="floor-badge">3 (LRDE)</span>
+                    <span class="floor-badge">5</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="vj-buildings" class="building-grid" style="display: none;">
+            <div class="building-card" data-building="va">
+                <div class="building-name">🏢 Villejuif VA</div>
+                <div class="floor-list">
+                    <span class="floor-badge">-1</span>
+                    <span class="floor-badge">RDC</span>
+                    <span class="floor-badge">1</span>
+                    <span class="floor-badge">2</span>
+                    <span class="floor-badge">3</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <h2>📋 Légende</h2>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="legend-icon" style="background: #fff; color: #000; border: 1px solid #ddd;">━━</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Mur</span>
+                        <span class="legend-desc">Barre blanche épaisse</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon" style="background: #000; color: #fff;">━━</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Porte</span>
+                        <span class="legend-desc">Barre noire</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon">━━</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Panneau</span>
+                        <span class="legend-desc">Trait bleu</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon">☕</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Distributeur</span>
+                        <span class="legend-desc">Machine à café/snacks</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon">🚪</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Ascenseur</span>
+                        <span class="legend-desc">Pictogramme avec personnes</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon">🖨️</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Imprimante</span>
+                        <span class="legend-desc">Point d'impression</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon">🚶</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Escaliers</span>
+                        <span class="legend-desc">Accès aux étages</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon">ℹ️</div>
+                    <div class="legend-text">
+                        <span class="legend-label">Information</span>
+                        <span class="legend-desc">Point info/accueil</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Bâtiment</h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="floor-selector" id="floor-selector"></div>
+                <div class="map-container" id="map-container">
+                    <p style="color: #666;">Sélectionnez un étage</p>
+                </div>
+                <div class="info-box">
+                    <p>💡 <strong>Conseil:</strong> Ouvrez les images en plein écran pour accéder aux liens interactifs intégrés dans les plans SVG.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const buildings = {
+            voltaire: {
+                name: 'Voltaire',
+                campus: 'kb',
+                floors: [
+                    { label: '-1', file: 'map-kb-voltaire-f-1.svg' },
+                    { label: 'RDC', file: 'map-kb-voltaire-f0.svg' },
+                    { label: '1', file: 'map-kb-voltaire-f1.svg' },
+                    { label: '2', file: 'map-kb-voltaire-f2.svg' },
+                    { label: '3', file: 'map-kb-voltaire-f3.svg' },
+                    { label: '4', file: 'map-kb-voltaire-f4.svg' },
+                    { label: '5', file: 'map-kb-voltaire-f5.svg' },
+                    { label: '6', file: 'map-kb-voltaire-f6.svg' }
+                ]
+            },
+            pasteur: {
+                name: 'Pasteur',
+                campus: 'kb',
+                floors: [
+                    { label: '-1', file: 'map-kb-pasteur-f-1.svg' },
+                    { label: 'RDC', file: 'map-kb-pasteur-f0.svg' },
+                    { label: '1', file: 'map-kb-pasteur-f1.svg' }
+                ]
+            },
+            paritalie: {
+                name: 'Paritalie',
+                campus: 'kb',
+                floors: [
+                    { label: '2', file: 'map-kb-pasteur-f2.svg' },
+                    { label: '3 (LRDE)', file: 'https://lrde.epita.fr/' },
+                    { label: '5', file: 'map-kb-pasteur-f5.svg' }
+                ]
+            },
+            va: {
+                name: 'Villejuif VA',
+                campus: 'vj',
+                floors: [
+                    { label: '-1', file: 'map-vj-va-1.svg' },
+                    { label: 'RDC', file: 'map-vj-va0.svg' },
+                    { label: '1', file: 'map-vj-va1.svg' },
+                    { label: '2', file: 'map-vj-va2.svg' },
+                    { label: '3', file: 'map-vj-va3.svg' }
+                ]
+            }
+        };
+
+        let currentBuilding = null;
+        let currentFloorIndex = 0;
+
+        document.querySelectorAll('.campus-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.campus-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const campus = btn.dataset.campus;
+                document.getElementById('kb-buildings').style.display = campus === 'kb' ? 'grid' : 'none';
+                document.getElementById('vj-buildings').style.display = campus === 'vj' ? 'grid' : 'none';
+            });
+        });
+
+        document.querySelectorAll('.building-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const buildingKey = card.dataset.building;
+                openBuilding(buildingKey);
+            });
+        });
+
+        function openBuilding(buildingKey) {
+            currentBuilding = buildings[buildingKey];
+            currentFloorIndex = 0;
+            
+            document.getElementById('modal-title').textContent = currentBuilding.name;
+            
+            const floorSelector = document.getElementById('floor-selector');
+            floorSelector.innerHTML = '';
+            
+            currentBuilding.floors.forEach((floor, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'floor-btn' + (index === 0 ? ' active' : '');
+                btn.textContent = floor.label;
+                btn.onclick = () => selectFloor(index);
+                floorSelector.appendChild(btn);
+            });
+            
+            loadFloor(0);
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function selectFloor(index) {
+            currentFloorIndex = index;
+            document.querySelectorAll('.floor-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+            loadFloor(index);
+        }
+
+        function loadFloor(index) {
+            const floor = currentBuilding.floors[index];
+            const container = document.getElementById('map-container');
+            
+            if (floor.file.startsWith('http')) {
+                container.innerHTML = `<div style="text-align: center; color: #666;">
+                    <p style="font-size: 1.2rem; margin-bottom: 1rem;">🔗 Lien externe</p>
+                    <a href="${floor.file}" target="_blank" style="color: #e74c3c; text-decoration: none; font-weight: 600;">Visiter ${floor.label}</a>
+                </div>`;
+            } else {
+                container.innerHTML = `<img src="${floor.file}" alt="${currentBuilding.name} - ${floor.label}" onerror="this.parentElement.innerHTML='<p style=color:#999>Plan non disponible pour cet étage</p>'">`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
